@@ -5,7 +5,6 @@ import fitz  # PyMuPDF
 from flask import Flask, request, jsonify, render_template
 from transformers import pipeline
 from huggingface_hub import login
-from dotenv import load_dotenv
 
 # --- 1. SETUP & CONFIGURATION ---
 load_dotenv()  # Load .env for local development
