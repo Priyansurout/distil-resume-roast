@@ -7,8 +7,14 @@ from transformers import pipeline
 from huggingface_hub import login
 
 # --- 1. SETUP & CONFIGURATION ---
-load_dotenv()  # Load .env for local development
 
+# --- ROBUST SETUP ---
+# Try to load .env (for local), but skip if missing (for cloud)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 app = Flask(__name__)
 
 # Get token (Securely)
