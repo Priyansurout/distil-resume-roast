@@ -6,3 +6,5 @@ bitsandbytes
 pymupdf
 huggingface_hub
 bitsandbytes
+ollama
+rich
