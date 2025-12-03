@@ -33,7 +33,7 @@ def roast_resume(pdf_path):
         console.print("[bold yellow]⚠️ Warning:[/bold yellow] This PDF looks empty or is a scanned image.")
         return
 
-    # --- 3. INITIALIZE CLIENT (The Standard Way) ---
+    # --- 3. INITIALIZE CLIENT ---
     try:
         client = DistilLabsLLM(model_name=MODEL_NAME)
     except Exception as e:
@@ -57,7 +57,7 @@ def roast_resume(pdf_path):
 
     # 5. Parse & Display
     try:
-        # Sanitize output (remove markdown blocks if present)
+        # Sanitize output 
         clean_json = raw_response.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean_json)
         

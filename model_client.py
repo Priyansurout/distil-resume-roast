@@ -27,7 +27,6 @@ You must output a valid JSON object matching this exact structure:
 class DistilLabsLLM:
     def __init__(self, model_name: str, port: int = 11434):
         self.model_name = model_name
-        # Standard Pattern: Use OpenAI Client to talk to Ollama
         self.client = OpenAI(
             base_url=f"http://127.0.0.1:{port}/v1",
             api_key="EMPTY"
