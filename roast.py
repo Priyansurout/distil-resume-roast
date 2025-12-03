@@ -4,10 +4,29 @@ import fitz
 import ollama
 from rich.console import Console
 from rich.panel import Panel
-from rich.markdown import Markdown
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 console = Console()
+
+
+def generate_roast_prompt(resume_text):
+    return f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+## Task
+Generate a brutally honest 'roast' critique of the provided resume.
+The output MUST be a pure, stringified JSON object with exactly these fields:
+- "roast_critique": Sarcastic, funny, mean paragraph.
+- "professional_suggestions": List of 3 actionable tips.
+- "rating": Integer 1-10.
+
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+Process the context according to the task description.
+
+Context:
+{resume_text}
+
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
 
 def extract_text_from_pdf(pdf_path):
     """Reads the PDF and extracts raw text."""
@@ -31,7 +50,10 @@ def roast_resume(pdf_path):
         console.print("[bold yellow]⚠️ Warning:[/bold yellow] This PDF looks empty or is a scanned image.")
         return
 
-    # 3. Call Ollama (Local)
+    # --- 3. PREPARE THE PROMPT  ---
+    final_prompt = generate_roast_prompt(resume_text)
+
+    # 4. Call Ollama (Local)
     with Progress(
         SpinnerColumn("dots", style="red"),
         TextColumn("[bold red]Roasting this poor soul...[/bold red]"),
@@ -42,15 +64,19 @@ def roast_resume(pdf_path):
         try:
             response = ollama.generate(
                 model='roast_master', 
-                prompt=resume_text,
-                format='json',    # Force valid JSON
-                stream=False
+                prompt=final_prompt,  
+                format='json',    
+                stream=False,
+                options={
+                    'num_ctx': 8192,   
+                    'temperature': 0.8
+                }
             )
         except Exception as e:
             console.print(f"[bold red]❌ Ollama Error:[/bold red] Is Ollama running? ({e})")
             sys.exit(1)
 
-    # 4. Parse & Display
+    # 5. Parse & Display
     try:
         data = json.loads(response['response'])
         
@@ -74,7 +100,7 @@ def roast_resume(pdf_path):
             
     except json.JSONDecodeError:
         console.print("[bold red]❌ Error:[/bold red] The model burped and didn't output valid JSON.")
-        console.print(response['response'])
+        console.print(f"Raw Output: {response['response']}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
