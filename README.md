@@ -44,7 +44,7 @@ FROM ./unsloth.Q4_K_M.gguf
 PARAMETER stop "<|start_header_id|>"
 PARAMETER stop "<|end_header_id|>"
 PARAMETER stop "<|eot_id|>"
-
+```
 
 ### **3. Usage**
 
