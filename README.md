@@ -71,11 +71,21 @@ We needed the model to satisfy three conflicting requirements simultaneously:
 
 ### 2. Quantitative Results 
 
-| Metric | 🤖 Base Model (Llama 3.2 1B) | 🔥 Fine-Tuned Model (Roast Master) |
-| :--- | :--- | :--- |
-| **JSON Valid Rate** | **30% (Fail)** <br>Often added formatting wrappers or conversational text. | **100% (Pass)** <br>Consistently output raw, parseable JSON. |
-| **Persona Score** | **4/10 (Polite)** <br>Often apologized for being mean or reverted to helpful advice. | **10/10 (Sarcastic)** <br>Maintained the "Roaster" persona without breaking character. |
-| **Formatting** | **High Noise** <br>Hallucinated `Note:` sections and Markdown blocks. | **Zero Noise** <br>Strict adherence to the requested schema. |
+| Metric | 🤖 Base Model (Llama-3.2-1B) | 👨‍🏫 Teacher Model (gpt-oss-120b) | 🔥 Fine-Tuned Student (Custom) |
+| :--- | :--- | :--- | :--- |
+| **JSON Valid Rate** | **70% (Failed)** | **100% (Passed)** | **100% (Passed)** <br>Matches Teacher performance. |
+| **Persona Score** | **4/10 (Generic Snark)** <br>Often polite or apologetic. | **10/10 (Benchmark)** | **10/10 (Highly Contextual)** <br>Successfully mimicked the Teacher's tone. |
+| **Hallucination** | **High** <br>(Invented formatting wrappers) | **None** | **None** <br>Strict adherence. |
+
+> **Methodology:** A human evaluator reviewed outputs.
+
+### **Evaluation Metrics**
+
+| **Metric**         | **Teacher** | **Student-Base (Untrained)** | **Student-Tuned (Ours)** |
+|--------------------|-------------------|-------------------------------|---------------------------|
+| **ROUGE-L**        | 0.44              | 0.10                          | **0.43 ⬆** |
+| **METEOR**         | 0.36              | 0.17                          | **0.35 ⬆** |
+
 
 ### 3. Qualitative Comparison (Side-by-Side)
 
@@ -136,25 +146,6 @@ The fine-tuning process **successfully eliminated the formatting hallucinations*
   <img src="./examples/rr-3.png" width="550" alt="Example 2" />
 </p>
 
-## 📊 Performance
-
-We benchmarked our student model against the teacher (**Llama 3.3 70B**).  
-The fine-tuned **3B student model** achieves perfect format compliance and captures the **Roast persona** effectively.
-
----
-
-### **Evaluation Metrics**
-
-| **Metric**         | **Teacher (70B)** | **Student-Base (Untrained)** | **Student-Tuned (Ours)** |
-|--------------------|-------------------|-------------------------------|---------------------------|
-| **ROUGE-L**        | 0.21              | 0.16                          | **0.23 ⬆** |
-| **METEOR**         | 0.32              | 0.27                          | **0.35 ⬆** |
-| **LLM-as-a-Judge** | **1.00**          | 1.00                        | **1.00 ⬆** |
-
-> **Note:**  
-> A **1.00 LLM-as-a-Judge** score indicates the model perfectly follows the complex JSON schema and Roast persona instructions.
-
----
 
 ### **Training Config**
 
