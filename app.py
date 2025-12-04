@@ -1,56 +1,25 @@
 import os
 import json
-import torch
-import fitz 
+import fitz  
 from flask import Flask, request, jsonify, render_template
-from transformers import pipeline
-from huggingface_hub import login
+from model_client import DistilLabsLLM
 
 # --- 1. SETUP & CONFIGURATION ---
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
 app = Flask(__name__)
 
-# Get token (Securely)
-HF_TOKEN = os.environ.get("HF_TOKEN")
-MODEL_ID = "Priyansu19/Rost-Resume"
+# Configuration matches your Ollama setup
+MODEL_NAME = "roast_master" 
+PORT = 11434
 
-if HF_TOKEN:
-    login(token=HF_TOKEN)
-
-# --- 2. LOAD MODEL (CPU/GPU SAFE MODE) ---
-print("Loading Model... (This runs once at startup)")
-
-
-device_map = "auto"
-model_kwargs = {}
-
-if torch.cuda.is_available():
-    print("✅ GPU Detected: Enabling 4-bit quantization for speed.")
-    model_kwargs = {"load_in_4bit": True}
-else:
-    print("⚠️ No GPU Detected: Loading in standard mode (slower but stable).")
-    model_kwargs = {} 
-
+# Initialize the Standard Client
 try:
-    roaster = pipeline(
-        "text-generation",
-        model=MODEL_ID,
-        token=HF_TOKEN,
-        device_map=device_map,
-        model_kwargs=model_kwargs,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-    )
-    print("✅ Model Loaded Successfully!")
+    client = DistilLabsLLM(model_name=MODEL_NAME, port=PORT)
+    print(f"✅ Connected to Model Client (Target: {MODEL_NAME})")
 except Exception as e:
-    print(f"❌ Critical Error Loading Model: {e}")
-    roaster = None
+    print(f"❌ Error initializing client: {e}")
+    client = None
 
-# --- 3. PDF EXTRACTION HELPER ---
+# --- 2. PDF EXTRACTION HELPER ---
 def extract_text_from_pdf(file_stream):
     """Reads a PDF file stream and converts it to plain text."""
     try:
@@ -63,37 +32,16 @@ def extract_text_from_pdf(file_stream):
         print(f"PDF Error: {e}")
         return ""
 
-# --- 4. PROMPT GENERATOR ---
-def generate_roast_prompt(resume_text):
-    return f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-## Task
-Generate a brutally honest 'roast' critique of the provided resume.
-The output MUST be a pure, stringified JSON object with exactly these fields:
-- "roast_critique": Sarcastic, funny, mean paragraph.
-- "professional_suggestions": List of 3 actionable tips.
-- "rating": Integer 1-10.
-
-<|eot_id|><|start_header_id|>user<|end_header_id|>
-
-Process the context according to the task description.
-
-Context:
-{resume_text}
-
-<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
-
-# --- 5. FLASK ROUTES ---
+# --- 3. FLASK ROUTES ---
 
 @app.route('/')
 def home():
-    # Renders templates/index.html
     return render_template('index.html')
 
 @app.route('/roast', methods=['POST'])
 def roast():
-    if not roaster:
-        return jsonify({"error": "Model failed to load. Check server logs."}), 500
+    if not client:
+        return jsonify({"error": "Model Client is not ready. Is Ollama running?"}), 500
 
     # Check if file part exists
     if 'file' not in request.files:
@@ -109,34 +57,22 @@ def roast():
         resume_text = extract_text_from_pdf(file)
         
         if len(resume_text.strip()) < 50:
-            return jsonify({"error": "Could not read text from this PDF. Is it a scanned image?"}), 400
+            return jsonify({"error": "Could not read text. Is this PDF empty or scanned?"}), 400
 
-        # 2. Build Prompt
-        prompt = generate_roast_prompt(resume_text)
+        # 2. Call the Model
+        raw_response = client.invoke(resume_text)
 
-        # 3. Generate Response
-        outputs = roaster(
-            prompt,
-            max_new_tokens=500,
-            do_sample=True,
-            temperature=0.8, # Slightly higher for creativity
-        )
-
-        # 4. Parse Output
-        raw_output = outputs[0]["generated_text"].split("<|start_header_id|>assistant<|end_header_id|>")[-1].strip()
-        
-        # Remove markdown code blocks if present
-        if raw_output.startswith("```json"):
-            raw_output = raw_output.replace("```json", "").replace("```", "")
-        
-        # Parse JSON
-        json_response = json.loads(raw_output)
+        # 3. Clean & Parse Output
+        clean_json = raw_response.replace("```json", "").replace("```", "").strip()
+        json_response = json.loads(clean_json)
         
         return jsonify(json_response)
 
     except Exception as e:
         print(f"Processing Error: {e}")
-        return jsonify({"error": "Failed to generate valid JSON.", "details": str(e)}), 500
+        return jsonify({"error": "Failed to generate roast.", "details": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=7860)
+    # We allow the port to be set by environment for deployment flexibility
+    port = int(os.environ.get('PORT', 7860))
+    app.run(host='0.0.0.0', port=port)
